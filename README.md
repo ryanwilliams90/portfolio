@@ -15,7 +15,6 @@ Companion code lives in standalone repos linked from the relevant case studies �
 
 ## Contents
 
-- [`about.md`](./about.md) — background and areas of focus
 - [`case-studies/`](./case-studies/) — flagship architecture writeups
 - [`writing/`](./writing/) — technical essays and engineering notes
 - [`projects/`](./projects/) — supporting project summaries
