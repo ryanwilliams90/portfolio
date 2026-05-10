@@ -16,4 +16,6 @@ Architecture-first. Constraints and failure modes drive design, not framework ch
 
 ## Contact
 
-_To be filled in._
+- GitHub: [@ryanwilliams90](https://github.com/ryanwilliams90)
+- Email: _add preferred address here_
+- LinkedIn: _add profile URL here_
