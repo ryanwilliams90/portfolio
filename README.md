@@ -10,6 +10,26 @@ Distinguished Software Engineer at Rapid7, working on production AI infrastructu
 
 **[Calling the Model Is the Easy Part](./writing/calling-the-model-is-the-easy-part.md)** — The industry is still optimizing the wrong layer of the AI stack. The hard engineering problems start when AI systems become operationally important and need to be governed, observed, bounded, deployed, debugged, and trusted.
 
+## The primitives this work explores
+
+```mermaid
+flowchart LR
+    RB["Runtime boundary<br/>(orchestration gateway)"]
+    AI["Agent identity<br/>(scoped credentials)"]
+    MM["Multi-model coordination<br/>(review orchestration)"]
+    PR["Signed provenance<br/>(deployment chain)"]
+
+    RB --> AI
+    RB --> MM
+    AI --> PR
+    MM --> PR
+
+    classDef prim fill:#eef4fb,stroke:#3367d6,stroke-width:1px;
+    class RB,AI,MM,PR prim;
+```
+
+The case studies explore these primitives individually; together they describe the control plane around production AI systems. The runtime boundary hosts the agent identity layer's enforcement point and the multi-model coordination flow; both feed signed events into the provenance chain that attests how a deployed artifact was produced.
+
 ## Evidence
 
 Case studies are examples of how the ideas in the perspective piece manifest in real systems.

@@ -175,6 +175,19 @@ Several things are genuinely harder to debug in this system than in a stateless 
 - **Centralized secret loading is a reliability decision, not a security one.** The security argument is real, but the operational argument is stronger: per-request credential resolution is per-request latency variance and per-request failure surface. Loading at lifespan turns runtime credential issues into deploy-time failures, where they belong.
 - **The metrics that matter live one layer below where the problem appears.** Gateway latency rises because executors are saturated. Executors saturate because Bedrock is throttling. Bedrock throttles because the workload changed shape. Without the lower-level metrics, every incident is a hypothesis.
 
+## Production consequence
+
+This pattern mattered because it converted a framework-driven synchronous agent runtime into an operable production service boundary. The important outcome was not the framework choice; it was that **saturation, readiness, timeout behavior, provider degradation, request correlation, and secret loading became explicit platform concerns rather than incidental application behavior**.
+
+Concretely, the platform shifted on several axes that had previously been carried implicitly by the application:
+
+- Replaced ad-hoc, project-local agent invocation with an explicit service boundary that has a stable API contract, defined error surface, and documented timeout layering across client, ingress, gateway, and orchestration.
+- Made executor saturation observable as a queue depth and active-workers metric *before* it manifested as user-visible latency, so operators could reason about pool sizing as a deployment-time decision rather than discover it during an incident.
+- Separated liveness from readiness, so graceful shutdown and lifespan-misconfiguration had defined operational behavior — readiness flips before in-flight workflows complete, and misconfigured pods exit before serving traffic.
+- Established a reference pattern reusable across future AI runtime integrations. Subsequent agent runtimes plug into the same gateway shape with project-local entrypoints; the boundary engineering doesn't have to be re-derived per integration.
+
+Those are the changes worth attesting. Throughput numbers, latency percentiles, and pool-sizing parameters depend on workload mix and aren't generalizable; the architectural shifts above are what the pattern actually delivers.
+
 ## Future improvements
 
 Extensibility points the design accommodates but the current implementation does not yet exercise:
