@@ -2,6 +2,7 @@
 
 **Status:** Shipped
 **Stack:** FastAPI · CrewAI · AWS Bedrock · Kubernetes · LiteLLM-style provider abstraction
+**Companion code:** [`ryanwilliams90/orchestration-gateway-pattern`](https://github.com/ryanwilliams90/orchestration-gateway-pattern) — clean-room reference implementation of the async/sync boundary pattern, with mypy-strict typing, lint-clean code, and a test suite that pins the boundary properties (concurrency bounds, timeout honesty, ContextVar propagation, retry semantics).
 
 ## Executive summary
 
