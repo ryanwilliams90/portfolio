@@ -41,7 +41,7 @@ This is not a parallel provenance standard. It is a **profile composed over exis
 | Query graph over metadata | GUAC | Aggregates SBOMs, attestations, and vulnerability reports into a graph for relationship queries. |
 | AI/ML model artifacts | OpenSSF Model Signing (OMS) | Signs model artifacts (related but adjacent — OMS is for ML models, not for AI-generated application code). |
 
-The architecture is composed from these primitives. The design-specific contribution is **the AI-participation predicate**: a signed claim that an AI system generated, modified, reviewed, or influenced a code-path decision under a specific identity, policy, and tool boundary. That predicate doesn't exist as a widely-adopted standard yet; the rest of the chain does.
+The architecture is composed from these primitives. The design-specific contribution is **the AI-participation predicate**: a signed claim that an AI system generated, modified, reviewed, or influenced a code-path decision under a specific identity, policy, and tool boundary. A widely adopted predicate for AI-assisted code participation does not appear to exist yet; the rest of the chain is largely covered by existing standards and tooling.
 
 The framing this enables: this isn't "should we build a new provenance standard?" — the answer to that is "no." It's "what does an AI-assisted-code provenance profile look like over the existing standards?" — and that's the question this case study answers.
 
@@ -173,7 +173,7 @@ A signed chain that nobody checks is a process artifact in disguise. Enforcement
 
 - **Admission** is the primary enforcement point — but it should not reconstruct the entire chain on every pod creation. A **release verifier** evaluates the full attestation bundle once (build provenance, AI participation events, review verdicts, approvals, policy state), emits a signed verification summary (VSA) for the image digest, and **admission verifies the image signature plus the release VSA against a pinned policy identity**. Kyverno's image validation policies show the practical admission-side shape: verify image signatures and attestation signatures, validate extracted attestation payloads against policy.
 - **Registry** verifies signatures on push as defense in depth. Easy to bypass with a misconfigured project; useful but not sufficient on its own.
-- **Runtime continuous verification** matters for some workloads (re-checking on container restart, refusing to start if the attestation has been revoked). For most workloads, admission is sufficient.
+- **Runtime continuous verification** matters for some workloads (re-checking on container restart, refusing to start if the attestation has been revoked since admission). For many workloads, admission is the right primary control; higher-risk and regulated environments will want continuous runtime verification on top.
 - **Deployment system** itself signs an attestation: image digest + environment + rollout ID + time + approver + change class. Stored as an OCI referrer or in an append-only attestation store, indexed by digest. "When did this artifact reach production?" gets a signed answer.
 
 The unifying principle: **don't trust strings.** Not tags, not deployment-system records, not registry resolution, not PR descriptions. Trust signed digests, signed attestations, signed deployment records.
@@ -200,11 +200,11 @@ The question the system has to answer is precise:
 Under the preferred design, the answer is a single query against the artifact:
 
 1. The runtime knows the artifact digest (from admission).
-2. The artifact's signature chain produces the build attestation.
-3. The build attestation produces the source commit and the build environment.
-4. The commit's metadata produces the PR, the AI review verdict (signed and bound to the commit), and the human approval.
+2. The artifact digest indexes the signature, build attestation, and related provenance bundle (via OCI referrers or an external attestation store).
+3. The build attestation names the source commit and the build environment.
+4. The commit links to the PR, the AI participation attestation(s) (signed and bound to the commit), and the human approval.
 5. The PR references the specification or intent record.
-6. The deployment attestation produces the deployment time, environment, and approver.
+6. The deployment attestation records the deployment time, environment, and approver.
 
 Every link is a signed assertion. The answer is mechanical to retrieve, deterministic to verify, and survives reconstruction failures in any of the originating systems — because the chain is attached to, or indexed by, the artifact digest, not held only in the originating systems.
 
