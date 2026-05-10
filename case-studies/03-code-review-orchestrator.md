@@ -202,31 +202,72 @@ Areas extended beyond the initial design that the architecture accommodates:
 - **Evaluation scoring pipeline.** A separate offline evaluation system that scores prompt versions, routing policies, and grouping thresholds against a held-out labeled set. This is the prerequisite for sustainable prompt evolution.
 - **End-to-end orchestration tracing.** Span-level tracing across intake, fan-out, collection, normalization, classification, and escalation, correlated with proxy-layer per-call telemetry.
 
-## Suggested diagram
+## Architecture diagram
 
-A pipeline diagram with degradation paths drawn explicitly. Primary flow:
+```mermaid
+flowchart TD
+    Intake([PR Intake])
+    Routing["Routing<br/>(policy version)"]
+    Framing["Adversarial Prompt Framing<br/>(per-model, versioned)"]
 
+    subgraph Proxy["Internal LLM Proxy (ZDR enforced)"]
+        Fanout["Parallel Model Invocation<br/>per-call timeout"]
+    end
+
+    Collect{"Response Collection<br/>at latency-budget boundary"}
+
+    Full["Full Review<br/>all models returned"]
+    Reduced["Reduced Review<br/>≥2 models returned"]
+    Advisory["Single-Model Advisory<br/>1 model returned"]
+    Unavailable(["Unavailable<br/>0 models returned"])
+
+    Dedup["Semantic De-duplication<br/>structural signals → embedding tiebreak"]
+    Classify["Classification<br/>Consensus / Majority / Minority / Contested"]
+    Escalate{"Contested findings<br/>above threshold?"}
+    EscalateRun["Bounded Escalation<br/>scope-limited • depth=1<br/>within overall budget"]
+    Final([Final Review + Audit Record])
+
+    Governance[/"Governed assets<br/>routing policy • prompt versions"/]
+    Audit[/"Audit Record<br/>(captured at every stage)"/]
+
+    Intake --> Routing --> Framing --> Fanout
+    Fanout --> Collect
+
+    Collect --> Full
+    Collect --> Reduced
+    Collect --> Advisory
+    Collect --> Unavailable
+
+    Full --> Dedup
+    Reduced --> Dedup
+    Advisory --> Dedup
+    Dedup --> Classify --> Escalate
+    Escalate -->|yes| EscalateRun --> Final
+    Escalate -->|no| Final
+
+    Governance -.-> Routing
+    Governance -.-> Framing
+
+    Routing -.-> Audit
+    Framing -.-> Audit
+    Fanout -.-> Audit
+    Collect -.-> Audit
+    Dedup -.-> Audit
+    Classify -.-> Audit
+    EscalateRun -.-> Audit
+    Audit -.-> Final
+
+    classDef degraded fill:#f9f3e0,stroke:#999
+    classDef terminal fill:#f5d6d6,stroke:#999
+    class Reduced,Advisory degraded
+    class Unavailable terminal
 ```
-PR Intake
-  → Routing (policy version)
-  → Adversarial Prompt Framing (per-model)
-  → Parallel Model Invocation (via internal LLM proxy)
-  → Response Collection (latency budget enforced)
-  → Semantic De-duplication
-  → Classification (Consensus / Majority / Minority / Contested)
-  → Bounded Escalation (Contested only)
-  → Final Review + Audit Record
-```
 
-Side annotations:
+The diagram's job is to make the coordination semantics legible. Three things matter most visually:
 
-- **Internal LLM proxy** sits between the orchestrator and every provider. Annotate "ZDR enforced; credentials held; no direct provider calls."
-- **Latency budget** drawn as a horizontal axis spanning Collection and Escalation, with the per-call ceilings shown as smaller intervals inside the overall budget. Make visually clear that escalation's budget is *part of* the overall budget, not additional.
-- **Degradation states** drawn as alternative outputs from the Collection stage — Full / Reduced / Single-model advisory / Unavailable — with arrows showing each state continues through the rest of the pipeline (or terminates at Unavailable).
-- **Governed assets** (routing policy, prompt versions) drawn as a separate panel feeding into Routing and Prompt Framing, labeled "versioned, change-reviewed."
-- **Audit record** drawn as a side output from every stage, accumulating into the final record. The diagram should show that audit data is captured *at every stage*, not only at the end.
-
-The diagram's job is to make the coordination semantics legible: where the latency budget bites, where degradation branches, where classification depends on the participant set, and where escalation is bounded.
+- **The Collection branch** — the four explicit degradation states are alternative outputs of one stage, not failure cases. Three of them feed into the rest of the pipeline; only `Unavailable` terminates.
+- **The latency budget envelope** — collection and escalation share one budget. Escalation is part of, not additional to, the overall review time.
+- **The audit record as a side channel from every stage**, not only the end. The audit is what makes review behavior explainable across deployments.
 
 ---
 

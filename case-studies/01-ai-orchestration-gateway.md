@@ -184,28 +184,46 @@ Extensibility points the design accommodates but the current implementation does
 - **Cost-aware routing.** Per-call cost accounting in the wrapper, feeding routing decisions and budget enforcement at the workflow level.
 - **Per-step orchestration telemetry.** Heartbeat-style events from inside the runtime, surfaced through the same metrics pipeline as gateway and provider metrics. This is the missing piece that makes a forty-second in-flight workflow legible.
 
-## Suggested diagram
+## Architecture diagram
 
-A layered architecture diagram. Left-to-right primary flow:
+```mermaid
+flowchart LR
+    Client([Client])
 
+    subgraph Async["Async (asyncio event loop)"]
+        Gateway["FastAPI Gateway<br/>validation • routing • metrics"]
+    end
+
+    subgraph Sync["Sync (worker threads)"]
+        Executor["ThreadPoolExecutor<br/>bounded pool size"]
+        Runtime["CrewAI Runtime<br/>crewai run lifecycle"]
+        Wrapper["Provider Wrapper<br/>retry • errors • instrumentation"]
+    end
+
+    Bedrock[("AWS Bedrock")]
+    Secrets[/"Kubernetes Secrets<br/>(loaded once at lifespan)"/]
+    Metrics[/"Metrics surface<br/>(gateway • executor • provider)"/]
+    CICD[/"CI/CD + container build<br/>per-project dependency isolation"/]
+
+    Client -->|HTTP| Gateway
+    Gateway -.->|"async → sync handoff<br/>bounded by pool size"| Executor
+    Executor -->|"crewai run<br/>CWD = project root"| Runtime
+    Runtime -->|"provider-neutral complete()"| Wrapper
+    Wrapper -->|"InvokeModel<br/>(provider-specific)"| Bedrock
+
+    Secrets ==>|"injected into shared state"| Gateway
+    Gateway -.-> Metrics
+    Executor -.-> Metrics
+    Wrapper -.-> Metrics
+    CICD -.->|"deployable image"| Gateway
+
+    classDef boundary stroke-dasharray: 5 5
+    class Async,Sync boundary
 ```
-Client → FastAPI Gateway → Executor Boundary → CrewAI Runtime → Model Wrapper → AWS Bedrock
-```
 
-Annotate each arrow with what changes across it:
+The diagram's job is to make the runtime boundaries visible. The dashed `Async / Sync` boxes are the most important feature: a reader should be able to point at exactly where the event loop ends and worker threads begin. Annotations on each arrow describe what changes across it — async-to-sync at the executor boundary, framework lifecycle entry into the runtime, provider-neutral interface at the wrapper, provider-specific invocation only in the final hop.
 
-- **Gateway → Executor:** async-to-sync handoff. Concurrency bounded by configured pool size.
-- **Executor → Runtime:** `crewai run` lifecycle entry. CWD set to project root, plugin/tool registration runs.
-- **Runtime → Wrapper:** provider-neutral `complete()` call. Model identifier opaque to runtime.
-- **Wrapper → Bedrock:** provider-specific invocation with retry, error normalization, and per-call instrumentation.
-
-Side panels connecting into the main flow:
-
-- **Kubernetes secrets** → loaded once at FastAPI lifespan startup, injected into shared runtime state. Annotate "no per-request access."
-- **Metrics surface** → fed by gateway, executor, and wrapper layers. Show three feed lines, not one — the diagram should make clear that these are distinct contributors.
-- **CI/CD + container runtime** → produces the deployable image; per-project dependency isolation enforced at build time.
-
-The diagram's primary job is to make the runtime boundaries visible. A reader should be able to point at exactly where async ends, where the synchronous runtime begins, where provider-specific code is contained, and where credentials enter the process.
+Side flows show that secrets enter exactly once (at lifespan, not per-request), metrics are fed from three distinct layers (gateway, executor, wrapper — each contributing different signals), and the deployable artifact is produced by CI/CD with per-project dependency isolation enforced at build time.
 
 ---
 
