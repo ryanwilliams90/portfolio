@@ -18,7 +18,7 @@ flowchart TB
 
     L2["**Orchestration & runtime coordination**<br/>runtime boundaries · task execution · bounded escalation · graceful degradation · multi-model coordination<br/><br/>_Evidence: AI Orchestration Gateway · Code Review Orchestrator_"]
 
-    L3["**Identity, tool access & governance**<br/>scoped execution · agent identity · tool authorization · audit policy<br/><br/>_Design note in development_"]
+    L3["**Identity, tool access & governance**<br/>scoped execution · agent identity · tool authorization · audit policy<br/><br/>_Evidence: Agent Identity and MCP Credential Plane (design note)_"]
 
     L4["**Model routing & provider control**<br/>internal LLM proxy · provider abstraction · ZDR enforcement · routing & failover<br/><br/>_Evidence: AI Orchestration Gateway · Code Review Orchestrator_"]
 
@@ -32,8 +32,8 @@ flowchart TB
     classDef planned fill:#fdf6e3,stroke:#b58900,stroke-width:1px,stroke-dasharray:4 3;
     classDef workload fill:#f4f4f4,stroke:#999,stroke-width:1px;
     class L1 workload;
-    class L2,L4,L5 grounded;
-    class L3,L6 planned;
+    class L2,L3,L4,L5 grounded;
+    class L6 planned;
 ```
 
 Layers shown in solid blue have at least one case study or reference implementation in this portfolio. Layers shown with a dashed amber border are areas where design work is in progress but a writeup hasn't shipped yet. The diagram is intentionally not a vendor-style "AI platform" stack — these are the *operational* concerns that determine whether an AI system is safe to run in production, irrespective of which models it's calling.
@@ -46,7 +46,9 @@ Case studies are examples of how the ideas in the perspective piece manifest in 
 
 - **[Multi-Model Code Review Orchestrator](./case-studies/03-code-review-orchestrator.md)** — *Design.* Multi-frontier-model orchestration under enterprise Zero Data Retention constraints. Demonstrates bounded escalation, explicit degradation states, semantic finding normalization, and governance of prompts and routing as versioned platform assets.
 
-Further case studies on agent identity / MCP credential planes and cryptographic provenance for AI-assisted code are in development.
+- **[Agent Identity and MCP Credential Plane](./case-studies/04-agent-identity-mcp-plane.md)** — *Design note.* Why agent identity is harder than service identity, what the operational threat model actually is, and the gateway-mediated scoped-execution shape that closes those failure modes. Argues that scoped execution is the operating model for agent platforms, not a security feature retrofitted later.
+
+A further case study on cryptographic provenance for AI-assisted code is in development.
 
 ## Background
 

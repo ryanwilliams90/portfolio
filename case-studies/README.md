@@ -13,3 +13,4 @@ Each case study follows a consistent structure:
 
 - [`01-ai-orchestration-gateway.md`](./01-ai-orchestration-gateway.md) — Production AI Orchestration Gateway *(Shipped)*
 - [`03-code-review-orchestrator.md`](./03-code-review-orchestrator.md) — Multi-Model Code Review Orchestrator *(Design)*
+- [`04-agent-identity-mcp-plane.md`](./04-agent-identity-mcp-plane.md) — Agent Identity and MCP Credential Plane *(Design note)*
