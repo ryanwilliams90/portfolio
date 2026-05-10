@@ -4,6 +4,8 @@
 **Stack:** FastAPI · CrewAI · AWS Bedrock · Kubernetes · LiteLLM-style provider abstraction
 **Companion code:** [`ryanwilliams90/orchestration-gateway-pattern`](https://github.com/ryanwilliams90/orchestration-gateway-pattern) — clean-room reference implementation of the async/sync boundary pattern, with mypy-strict typing, lint-clean code, and a test suite that pins the boundary properties (concurrency bounds, timeout honesty, ContextVar propagation, retry semantics).
 
+> This case study is a worked example of the runtime-boundary problem described in [Calling the Model Is the Easy Part](../writing/calling-the-model-is-the-easy-part.md). The gateway is evidence that production AI systems need explicit runtime boundaries: the model call was not the hard part; the hard part was turning a synchronous, framework-driven agent runtime into something that could behave like an operable service.
+
 ## Executive summary
 
 A FastAPI-based orchestration gateway that exposes CrewAI agent workflows as production services backed by AWS Bedrock. The gateway separates the consumer-facing API surface from the orchestration runtime, isolates blocking agent execution behind a thread-executor boundary, centralizes Kubernetes-managed secrets at lifespan startup, and contains provider-specific code behind a wrapper layer.
