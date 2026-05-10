@@ -225,9 +225,3 @@ flowchart LR
 The diagram's job is to make the runtime boundaries visible. The dashed `Async / Sync` boxes are the most important feature: a reader should be able to point at exactly where the event loop ends and worker threads begin. Annotations on each arrow describe what changes across it — async-to-sync at the executor boundary, framework lifecycle entry into the runtime, provider-neutral interface at the wrapper, provider-specific invocation only in the final hop.
 
 Side flows show that secrets enter exactly once (at lifespan, not per-request), metrics are fed from three distinct layers (gateway, executor, wrapper — each contributing different signals), and the deployable artifact is produced by CI/CD with per-project dependency isolation enforced at build time.
-
----
-
-### Resume summary
-
-Designed and operate a FastAPI orchestration gateway for CrewAI agent workloads on AWS Bedrock. Established the runtime boundary between async API handling and synchronous agent execution via a thread-executor isolation pattern with explicit concurrency bounds, centralized Kubernetes secret loading at application lifespan to eliminate per-request credential failure modes, and contained Bedrock-specific behavior — request shaping, error taxonomy, retry policy, instrumentation — behind a LiteLLM-style provider wrapper. The platform supports multiple CrewAI projects with build-time dependency isolation, container-first deployment, and a three-layer metrics surface (gateway, executor, provider) that makes saturation and throttling visible before they manifest as user-facing failures.

@@ -11,7 +11,5 @@ Each case study follows a consistent structure:
 
 ## Index
 
-- `01-ai-sdlc-platform.md` — Production AI SDLC Platform Architecture
-- `02-agent-identity-mcp.md` — Agent Identity and MCP Credential Plane
-- `03-code-review-orchestrator.md` — Multi-Model Code Review Orchestrator
-- `04-code-provenance.md` — Cryptographic Provenance for AI-Assisted Code
+- [`01-ai-orchestration-gateway.md`](./01-ai-orchestration-gateway.md) — Production AI Orchestration Gateway *(Shipped)*
+- [`03-code-review-orchestrator.md`](./03-code-review-orchestrator.md) — Multi-Model Code Review Orchestrator *(Design)*

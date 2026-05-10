@@ -268,9 +268,3 @@ The diagram's job is to make the coordination semantics legible. Three things ma
 - **The Collection branch** — the four explicit degradation states are alternative outputs of one stage, not failure cases. Three of them feed into the rest of the pipeline; only `Unavailable` terminates.
 - **The latency budget envelope** — collection and escalation share one budget. Escalation is part of, not additional to, the overall review time.
 - **The audit record as a side channel from every stage**, not only the end. The audit is what makes review behavior explainable across deployments.
-
----
-
-### Resume summary
-
-Designed a self-hosted multi-model orchestration architecture for AI-assisted code review under enterprise Zero Data Retention constraints. The design separates orchestration from integration: review requests fan out across multiple frontier models through an internal LLM proxy with adversarial prompt framings to counter prompt-induced false consensus; findings are semantically normalized before classification into Consensus/Majority/Minority/Contested categories whose meaning is bounded by the participant set actually used; contested findings trigger a single bounded escalation pass within the overall latency budget; and the system has explicit degradation states for provider outages and partial returns rather than treating them as errors. Prompts and routing policies are governed versioned artifacts; every review carries an audit record sufficient to explain why it produced the output it did.
