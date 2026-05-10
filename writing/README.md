@@ -1,3 +1,3 @@
 # Writing
 
-Technical essays and engineering notes. Topics center on AI runtime behavior, orchestration, provenance, and the operational concerns of production AI systems.
+- [Calling the Model Is the Easy Part](./calling-the-model-is-the-easy-part.md) — Why production AI infrastructure is primarily an operational engineering problem, not a model problem.
