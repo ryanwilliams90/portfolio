@@ -31,3 +31,7 @@ This is especially visible in observability. Many AI systems can report latency,
 That gap matters because production trust isn't created by model quality alone. It's created by the platform around the model: runtime coordination, identity, governance, evaluation, auditability, deployment safety, and reliability engineering.
 
 The next generation of AI infrastructure won't be won by teams that simply expose more model endpoints. It will be won by teams that build the operational substrate around AI systems — the layer that makes model behavior governable, observable, bounded, and safe enough to use in real production workflows.
+
+---
+
+The case studies in this portfolio are explorations of specific primitives this layer needs: the runtime boundary between async services and synchronous agent runtimes, the multi-model coordination model that makes ensembles operable, the credential plane that lets agents call tools without ambient authority, the provenance chain that ties a deployed artifact back to the AI participation that produced it. They're framed as architecture studies and reference implementations because that's the level the work has to be argued at — not "here's a tool I built," but "here's a primitive the field needs to converge on."

@@ -2,7 +2,7 @@
 
 Production AI systems are primarily infrastructure, governance, and runtime coordination problems — not model problems.
 
-This portfolio captures my perspective on production AI infrastructure, with architecture writeups and reference implementations that ground that perspective in real systems.
+This is the architecture work behind that thesis: the operational primitives production AI systems need — orchestration boundaries, agent identity, multi-model coordination, signed provenance — examined through architecture studies and reference implementations.
 
 Distinguished Software Engineer at Rapid7, working on production AI infrastructure, distributed data systems at scale, and security systems architecture.
 
