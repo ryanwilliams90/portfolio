@@ -1,6 +1,7 @@
 # Agent Identity and MCP Credential Plane
 
-**Status:** Architecture study
+**Status:** Prototype
+**Companion code:** [`ryanwilliams90/agent-identity-mcp`](https://github.com/ryanwilliams90/agent-identity-mcp) — working reference implementation of the design described here. Ed25519-signed scoped credentials, verifier structurally separated from tool execution, and a runnable demo of the headline rejection (a credential issued for one action cannot be used to call another).
 
 > This is a worked example of the identity, tool-access, and governance layer described in [Calling the Model Is the Easy Part](../writing/calling-the-model-is-the-easy-part.md). It argues that once agents can interact with real internal systems, scoped execution is the operating model — not a security feature you add later.
 
