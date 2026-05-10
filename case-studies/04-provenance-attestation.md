@@ -1,8 +1,10 @@
 # Cryptographic Provenance for AI-Assisted Code
 
-**Status:** Architecture study, not a production deployment
-**Audience:** platform engineering, application security, AI infrastructure governance
-**Thesis:** AI-assisted delivery does not require a fundamentally new SDLC. It requires the operational artifact — the signed build, the deployed container, the running instance — to become the system of record for provenance.
+**Status:** Architecture study, not a production deployment.
+
+**Audience:** platform engineering, application security, AI infrastructure governance.
+
+**Thesis:** AI-assisted delivery does not require a fundamentally new SDLC. It requires the operational artifact — the signed build, the deployed container, the running instance — to become the lookup key for the signed provenance chain that produced it.
 
 > This is a worked example of the provenance, deployment-safety, and release-traceability layer of [Calling the Model Is the Easy Part](../writing/calling-the-model-is-the-easy-part.md). Once AI materially participates in generating, modifying, or reviewing code, "a human reviewed the PR" is no longer enough as the primary provenance claim. The durable claim has to be artifact-centered: given a running workload, the platform should be able to produce a signed chain linking it back to the intent, PR, AI participation record, human approval, source commit, build provenance, artifact digest, deployment decision, and runtime verification result.
 
@@ -20,6 +22,28 @@ The full design lives in the rest of the document, but a single matrix gets the 
 | **Deployment** | image digest + environment + rollout ID | deployment controller | environment, time, approver, rollout ID, applied change class | audit query · runtime inventory |
 
 The matrix names the operational positions. The rest of the document explains why each row exists, what it defends against, and where the design is uncertain.
+
+## Standards alignment
+
+This is not a parallel provenance standard. It is a **profile composed over existing supply-chain standards**, with one missing predicate family added for AI-assisted code participation.
+
+| Concern | Existing standard or ecosystem | Role in this design |
+|---|---|---|
+| Source revision provenance | SLSA Source Track | Records how a source revision came to exist and which source-control policies were enforced (relevant to two-party review at higher levels). |
+| Build provenance | SLSA Build Track | Binds source, builder, workflow, and output artifact digest. Build L3 covers the build-to-artifact portion specifically. |
+| Signed claim format | in-toto Statement + DSSE | Encodes each provenance claim as a signed statement over immutable subjects (digests). |
+| Release verification | SLSA VSA | Lets admission trust a signed release-verifier decision instead of walking the full chain live on every pod admission. |
+| Artifact signing | Sigstore / cosign / Notation | Signs artifacts and attestations; cosign supports CUE / Rego policy validation. |
+| Attestation discovery | OCI Distribution referrers | Stores and discovers attestations, signatures, SBOMs, and VSAs by artifact digest, with documented fallback to a referrers tag schema. |
+| Admission enforcement | Sigstore policy-controller, Kyverno, Ratify | Enforces signature and attestation policy at admission, before runtime. |
+| Transparency / notarization | IETF SCITT (optional) | Provides an interoperable append-only transparency layer for signed supply-chain claims; intentionally does not define payload content. |
+| Inventory and metadata | SPDX 3.0, CycloneDX | Describes components, dependencies, ML-BOM, OBOM, and creator/supplier identity. Complementary to the chain, not a substitute. |
+| Query graph over metadata | GUAC | Aggregates SBOMs, attestations, and vulnerability reports into a graph for relationship queries. |
+| AI/ML model artifacts | OpenSSF Model Signing (OMS) | Signs model artifacts (related but adjacent — OMS is for ML models, not for AI-generated application code). |
+
+The architecture is composed from these primitives. The design-specific contribution is **the AI-participation predicate**: a signed claim that an AI system generated, modified, reviewed, or influenced a code-path decision under a specific identity, policy, and tool boundary. That predicate doesn't exist as a widely-adopted standard yet; the rest of the chain does.
+
+The framing this enables: this isn't "should we build a new provenance standard?" — the answer to that is "no." It's "what does an AI-assisted-code provenance profile look like over the existing standards?" — and that's the question this case study answers.
 
 ## The problem
 
@@ -93,32 +117,40 @@ The architectural claim is that **the artifact digest becomes the lookup key for
 
 - **Build provenance: SLSA Build L3 as the build-to-artifact target.** SLSA v1.2 is organized into multiple tracks; the Build Track specifically covers increasing trustworthiness of artifact build provenance through a hardened build platform, signed provenance, and tamper resistance during the build. Source-control, AI-review, approval, deployment, and runtime claims need separate attestations layered around that build provenance.
 - **AI involvement as a first-class attestation, not a PR comment.** When an AI agent generated, modified, or reviewed code, that involvement is captured as a structured signed event. The multi-model orchestrator's review verdict (Consensus / Majority / Minority / Contested) becomes an attestation bound to the commit, retrievable from the artifact.
-- **Wire format: in-toto Statement / DSSE envelope.** The in-toto Statement model binds an attestation to one or more subjects by digest, which is exactly the shape needed here. DSSE is the recommended envelope format — it handles canonical serialization and digital signatures around the Statement payload. cosign produces and verifies in-toto attestations and supports CUE / Rego policy validation, so the tooling for the predicate-and-subject pattern already exists. An AI-participation attestation, for example, is a Statement whose `subject` is the image (or commit) digest and whose `predicate` carries the structured event:
+- **Wire format: in-toto Statement / DSSE envelope.** The in-toto Statement model binds an attestation to one or more subjects by digest, which is exactly the shape needed here. DSSE is the recommended envelope format — it handles canonical serialization and digital signatures around the Statement payload. cosign produces and verifies in-toto attestations and supports CUE / Rego policy validation, so the tooling for the predicate-and-subject pattern already exists.
+
+  An AI-participation Statement's subject should be the **commit or patch digest** the AI acted on, not the eventual image digest — AI participation happens before the image exists, and the chain stays cleaner if each Statement's subject is the thing it actually describes. The image-level VSA later references the AI-participation attestation through `inputAttestations`, which is the right shape for cross-stage linkage.
 
   ```json
   {
     "_type": "https://in-toto.io/Statement/v1",
     "subject": [
       {
-        "name": "registry.example.com/payments@sha256:...",
-        "digest": { "sha256": "..." }
+        "name": "git+https://github.com/org/repo@abc123",
+        "digest": { "sha1": "abc123..." }
       }
     ],
     "predicateType": "https://example.com/ai-participation/v1",
     "predicate": {
-      "commit": "abc123...",
       "pull_request": "https://github.com/org/repo/pull/42",
       "agent_id": "agent://review-orchestrator/model-router",
       "model_class": "code-review",
       "action": "reviewed",
       "review_verdict": "Consensus",
       "prompt_policy_version": "2026-05-01",
-      "output_digest": "sha256:..."
+      "output_digest": "sha256:...",
+      "materiality_rule": "ai-participation-policy@2026-05-01",
+      "capture_point": "pre-merge-review",
+      "human_visible": true,
+      "redaction_policy": "store-output-digest-only",
+      "evidence_refs": [
+        "attestation://review-report/sha256:..."
+      ]
     }
   }
   ```
 
-  Each row in the matrix above corresponds to a Statement of this shape, with a different `predicateType` and `predicate` schema.
+  The `materiality_rule`, `capture_point`, and `redaction_policy` fields handle the "what counts as material AI participation worth attesting" question explicitly — see Open Questions below. Each row in the matrix above corresponds to a Statement of this shape, with a different `predicateType` and `predicate` schema.
 - **Storage: OCI registry referrers, with documented fallback.** Attestations are stored as OCI referrers indexed by image digest. The OCI Distribution spec defines a Referrers API for discovering attestations attached to a digest; clients receiving a 404 from the Referrers API must fall back to the referrers tag schema. A real implementation should support both, plus a registry-specific or external attestation store for environments where OCI referrers aren't a usable substrate. The deployment attestation is attached to, or indexed by, the artifact digest — not embedded into the built image after the fact, which would change the digest and break artifact identity.
 - **Deployment by digest, not tag.** OCI registries treat a digest as a hash of the artifact manifest or index — assumed immutable — whereas tags are mutable convenience references. The deployment manifest references the digest; the tag is human convenience.
 - **Change class as a separate signed predicate.** Rollback semantics aren't really a build-provenance fact — they're a release/operations fact derived from the code, migrations, feature flags, services touched, and deployment context. The change-class attestation is produced by the release verifier (or a dedicated change-class classifier), bound to both the image digest and the source commit, with classification values `stateless | stateful | migration | data-plane | control-plane | mixed`. The build provenance proves what was built; the change-class attestation describes operational rollback semantics; the deployment attestation records which class was applied during rollout.
