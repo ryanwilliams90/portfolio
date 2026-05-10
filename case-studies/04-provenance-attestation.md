@@ -15,8 +15,9 @@ The full design lives in the rest of the document, but a single matrix gets the 
 | **AI participation** | commit / PR / patch digest | orchestration gateway or review orchestrator | agent ID, model class, tool action, prompt-policy version, output digest, review verdict | release verifier |
 | **Build provenance** | image digest | CI control plane | source repo, commit, build workflow, builder ID, dependencies | release verifier · admission |
 | **Artifact signature** | image digest | CI / release signer | image digest, signer identity | admission controller |
+| **Change class** | image digest + source commit | release verifier or change-class classifier | classification (`stateless`, `stateful`, `migration`, `data-plane`, `control-plane`, `mixed`), migration metadata, rollback notes | rollback / incident response |
 | **Release verification summary (VSA)** | image digest | release verifier | policy digest, input attestation digests, PASS/FAIL | admission controller |
-| **Deployment** | image digest + environment + rollout ID | deployment controller | environment, time, approver, rollout ID, change class | audit query · runtime inventory |
+| **Deployment** | image digest + environment + rollout ID | deployment controller | environment, time, approver, rollout ID, applied change class | audit query · runtime inventory |
 
 The matrix names the operational positions. The rest of the document explains why each row exists, what it defends against, and where the design is uncertain.
 
@@ -45,7 +46,7 @@ The threat model is **loss of trust and traceability** in AI-assisted software d
 - **Audit questions require multi-system reconstruction.** "What was deployed on Tuesday at 14:00?" answerable only by joining Git history, CI logs, registry events, deployment records, and the orchestrator's database. Each join is a chance to drift.
 - **Mismatch between reviewed and deployed code.** A human approved one commit; the build that shipped came from a different commit (rebase, merge resolution, hotfix on top).
 - **Deployment systems trust mutable metadata.** Tags get reassigned, manifests get patched, Helm charts get edited in flight.
-- **Rollback decisions made without knowing change class.** Stateless? Schema migration? Feature flag? Data-plane? Without classification on the artifact itself, rollback is a coin flip.
+- **Rollback decisions made without knowing change class.** Stateless? Schema migration? Feature flag? Data-plane? Without a signed change-class attestation bound to the deployed digest, rollback is a coin flip.
 
 These are the failure modes that surface in incidents, compliance reviews, and post-mortems.
 
@@ -59,7 +60,7 @@ Designs that treat **provenance as a process artifact** rather than a property o
 - **Build systems producing artifacts without signed provenance.** Implicit trust in "the CI system" is a blast-radius statement, not a provenance one — CI compromise invalidates every claim downstream.
 - **Deployment systems trusting tags.** `image: myorg/service:v1.4.2` is a string; whatever the registry resolves it to *right now* is what ships.
 - **Runtime environments that don't verify artifact identity.** The pod started; therefore the artifact is correct. No admission check, no signature verification — kubelet success is the strongest claim in the chain.
-- **Rollback as a generic operation.** Same procedure regardless of change class. The artifact carries no information about itself, so rollback decisions happen on tribal knowledge.
+- **Rollback as a generic operation.** Same procedure regardless of change class. No signed change-class attestation bound to the digest, so rollback decisions happen on tribal knowledge.
 
 The common shape: trust accumulated by convention rather than carried by the artifact. That worked when the SDLC was fully human and changes were rare. It does not work when AI participates and change rate goes up.
 
@@ -75,23 +76,52 @@ specification / intent
         → commit hash
           → CI build provenance attestation
             → signed artifact / container digest
-              → release verification summary (VSA)
-                → deployment attestation (by digest)
-                  → admission verification
+              → change-class attestation
+                → release verification summary (VSA)
+                  → deployment request / manifest by digest
+                    → admission decision
+                      → runtime observation / deployment attestation
 ```
+
+The order matters: build, classify, verify, request, admit, observe. Admission is what gates the pod's admission to the cluster; the deployment attestation is what the deployment controller emits *after* the rollout, recording what actually happened.
 
 A useful distinction matters here: **artifact-bearing nodes are content-addressed** (commits, image digests, signed binary blobs). **Event-bearing nodes — review verdicts, approvals, deployment decisions, runtime observations — are signed statements *over* immutable identifiers** (commit hashes, image digests, policy digests, deployment IDs). Conflating the two muddles the trust analysis; the chain is built from both kinds.
 
-The architectural claim is that the **signed artifact bundle becomes the system of record**. Process records still exist, still matter — but they describe the chain, they don't constitute it.
+The architectural claim is that **the artifact digest becomes the lookup key for the signed provenance bundle**. Process records still exist, still matter — but they describe the chain, they don't constitute it. The chain is attached to, or indexed by, the artifact digest; nothing is embedded into the built image after build.
 
 ### Properties this design holds
 
 - **Build provenance: SLSA Build L3 as the build-to-artifact target.** SLSA v1.2 is organized into multiple tracks; the Build Track specifically covers increasing trustworthiness of artifact build provenance through a hardened build platform, signed provenance, and tamper resistance during the build. Source-control, AI-review, approval, deployment, and runtime claims need separate attestations layered around that build provenance.
 - **AI involvement as a first-class attestation, not a PR comment.** When an AI agent generated, modified, or reviewed code, that involvement is captured as a structured signed event. The multi-model orchestrator's review verdict (Consensus / Majority / Minority / Contested) becomes an attestation bound to the commit, retrievable from the artifact.
-- **Wire format: in-toto Statement / DSSE envelope.** The in-toto Statement model binds an attestation to one or more subjects by digest, which is exactly the shape needed here. cosign produces and verifies in-toto attestations and supports CUE / Rego policy validation, so the tooling already exists for the predicate-and-subject pattern.
-- **Storage: OCI registry referrers.** Attestations are stored as OCI referrers indexed by image digest. The deployment attestation is *attached to or indexed by* the artifact digest — not embedded into the built image after the fact, which would change the digest and break artifact identity.
+- **Wire format: in-toto Statement / DSSE envelope.** The in-toto Statement model binds an attestation to one or more subjects by digest, which is exactly the shape needed here. DSSE is the recommended envelope format — it handles canonical serialization and digital signatures around the Statement payload. cosign produces and verifies in-toto attestations and supports CUE / Rego policy validation, so the tooling for the predicate-and-subject pattern already exists. An AI-participation attestation, for example, is a Statement whose `subject` is the image (or commit) digest and whose `predicate` carries the structured event:
+
+  ```json
+  {
+    "_type": "https://in-toto.io/Statement/v1",
+    "subject": [
+      {
+        "name": "registry.example.com/payments@sha256:...",
+        "digest": { "sha256": "..." }
+      }
+    ],
+    "predicateType": "https://example.com/ai-participation/v1",
+    "predicate": {
+      "commit": "abc123...",
+      "pull_request": "https://github.com/org/repo/pull/42",
+      "agent_id": "agent://review-orchestrator/model-router",
+      "model_class": "code-review",
+      "action": "reviewed",
+      "review_verdict": "Consensus",
+      "prompt_policy_version": "2026-05-01",
+      "output_digest": "sha256:..."
+    }
+  }
+  ```
+
+  Each row in the matrix above corresponds to a Statement of this shape, with a different `predicateType` and `predicate` schema.
+- **Storage: OCI registry referrers, with documented fallback.** Attestations are stored as OCI referrers indexed by image digest. The OCI Distribution spec defines a Referrers API for discovering attestations attached to a digest; clients receiving a 404 from the Referrers API must fall back to the referrers tag schema. A real implementation should support both, plus a registry-specific or external attestation store for environments where OCI referrers aren't a usable substrate. The deployment attestation is attached to, or indexed by, the artifact digest — not embedded into the built image after the fact, which would change the digest and break artifact identity.
 - **Deployment by digest, not tag.** OCI registries treat a digest as a hash of the artifact manifest or index — assumed immutable — whereas tags are mutable convenience references. The deployment manifest references the digest; the tag is human convenience.
-- **Change-class classification.** The build attestation carries a structured field — `stateless | stateful | migration | data-plane | control-plane | mixed` — that rollback systems and incident response consume.
+- **Change class as a separate signed predicate.** Rollback semantics aren't really a build-provenance fact — they're a release/operations fact derived from the code, migrations, feature flags, services touched, and deployment context. The change-class attestation is produced by the release verifier (or a dedicated change-class classifier), bound to both the image digest and the source commit, with classification values `stateless | stateful | migration | data-plane | control-plane | mixed`. The build provenance proves what was built; the change-class attestation describes operational rollback semantics; the deployment attestation records which class was applied during rollout.
 
 ## Trust model
 
@@ -120,14 +150,14 @@ The unifying principle: **don't trust strings.** Not tags, not deployment-system
 
 AI-assisted code changes raise the stakes on rollback: change rate goes up, individual changes may be smaller and more numerous, the per-change cost of "is this safe to revert?" reasoning has to drop or rollback becomes a bottleneck.
 
-The architectural answer is **change-class classification on the artifact**, signed at build time. Rollback semantics differ by class:
+The architectural answer is **a change-class attestation, signed by the release verifier and bound to the image digest and source commit**. Rollback semantics differ by class:
 
 - **Stateless:** revert to previous artifact, immediate.
 - **Stateful (no migration):** revert to previous artifact, possibly with feature-flag adjustment.
 - **Migration:** rollback requires either a forward-only fix or a tested down-migration; the artifact's attestation includes the migration class so the on-call doesn't have to grep for it at 3am.
 - **Mixed:** worst case; requires explicit rollback design, which the artifact's attestation should reference.
 
-Without the classification, rollback is a coin flip. With it, the on-call has a deterministic procedure tied to a specific artifact, signed at build time, not reconstructed from tribal knowledge during the incident.
+Without the classification, rollback is a coin flip. With it, the on-call has a deterministic procedure tied to a specific artifact, signed at release time, not reconstructed from tribal knowledge during the incident.
 
 ## Audit model
 
@@ -144,7 +174,7 @@ Under the preferred design, the answer is a single query against the artifact:
 5. The PR references the specification or intent record.
 6. The deployment attestation produces the deployment time, environment, and approver.
 
-Every link is a signed assertion. The answer is mechanical to retrieve, deterministic to verify, and survives reconstruction failures in any of the originating systems — because the chain is on the artifact, not in the systems.
+Every link is a signed assertion. The answer is mechanical to retrieve, deterministic to verify, and survives reconstruction failures in any of the originating systems — because the chain is attached to, or indexed by, the artifact digest, not held only in the originating systems.
 
 ## Minimum viable implementation
 
@@ -190,6 +220,6 @@ This layer is where the operational substrate's audit and identity events become
 
 AI does not remove the need for software provenance. It makes provenance harder to fake, harder to reconstruct, and more important to design into the delivery path.
 
-The architectural response is not a stronger version of the human-process audit. It is to move the system of record from the process to the artifact — to put the cryptographic chain on the deployed thing, anchored at one end by the change's intent and at the other by the running container, with every link verifiable.
+The architectural response is not a stronger version of the human-process audit. It is to make the artifact digest the lookup key for the chain — to attach signed, verifiable assertions to the deployed thing, anchored at one end by the change's intent and at the other by the running container, with every link verifiable.
 
 That shift is the difference between trusting that the right thing was deployed and being able to *prove* it.
