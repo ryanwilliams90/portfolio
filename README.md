@@ -22,11 +22,13 @@ Each declares its status at the top — *Shipped* (running in production), *Prot
 
 - **[Agent Identity and MCP Credential Plane](./case-studies/03-agent-identity-mcp-plane.md)** — *Prototype.* Why agent identity is harder than service identity, the operational threat model, and the gateway-mediated scoped-execution shape that closes the failure modes. Demonstrates Ed25519-signed scoped credentials, a verifier structurally separated from tool code, and a runnable demonstration of the headline rejection — a credential issued for one action cannot be used to call another. **Companion code:** [`agent-identity-mcp`](https://github.com/ryanwilliams90/agent-identity-mcp).
 
+- **[Cryptographic Provenance for AI-Assisted Code](./case-studies/04-provenance-attestation.md)** — *Architecture study.* Why AI-assisted delivery makes "a human reviewed the PR" insufficient as a provenance model, and what an artifact-centered signed chain looks like instead. Covers the threat model, the design pattern to reject (process records as source of truth), the preferred SLSA-compatible chain from specification through commit, build attestation, signed artifact, deployment record, and admission verification, plus rollback semantics keyed on signed change-class metadata.
+
 ## Reading order
 
 - **5 minutes:** the [perspective piece](./writing/calling-the-model-is-the-easy-part.md).
 - **30 minutes:** the perspective piece, then the [orchestration gateway case study](./case-studies/01-ai-orchestration-gateway.md).
-- **A full read:** all three case studies, in order.
+- **A full read:** all four case studies, in order.
 - **Want code:** [`orchestration-gateway-pattern`](https://github.com/ryanwilliams90/orchestration-gateway-pattern) for the runtime-boundary pattern, [`agent-identity-mcp`](https://github.com/ryanwilliams90/agent-identity-mcp) for the scoped-credential demo.
 
 ---
