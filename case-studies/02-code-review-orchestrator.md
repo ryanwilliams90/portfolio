@@ -1,6 +1,6 @@
 # Multi-Model Code Review Orchestrator
 
-**Status:** Design
+**Status:** Architecture study (not yet productionized)
 **Stack:** self-hosted orchestration · multiple frontier model providers · internal LLM proxy · enterprise Zero Data Retention controls
 
 > This case study is a worked example of the multi-model coordination problem described in [Calling the Model Is the Easy Part](../writing/calling-the-model-is-the-easy-part.md). The orchestrator is evidence that multi-model AI systems are coordination systems, not just parallel API calls. The hard problems were bounded latency, semantic finding normalization, explicit degradation behavior, and governance of prompts and routing as versioned platform assets — not the model calls themselves.

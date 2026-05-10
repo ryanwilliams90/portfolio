@@ -1,6 +1,6 @@
 # Agent Identity and MCP Credential Plane
 
-**Status:** Design note
+**Status:** Architecture study
 
 > This is a worked example of the identity, tool-access, and governance layer described in [Calling the Model Is the Easy Part](../writing/calling-the-model-is-the-easy-part.md). It argues that once agents can interact with real internal systems, scoped execution is the operating model — not a security feature you add later.
 
@@ -160,10 +160,10 @@ These are the questions a real implementation has to answer. None of them have o
 
 ## How this fits the operational substrate
 
-The identity layer doesn't stand alone. It composes with the rest of the operational substrate the [README diagram](../README.md) describes:
+The identity layer doesn't stand alone. It composes with the rest of the operational substrate this portfolio describes:
 
 - The **orchestration gateway** is the runtime boundary that hosts the identity layer's enforcement point. The gateway pattern documented in [case study 01](./01-ai-orchestration-gateway.md) is what makes "evaluate policy at execution time" structurally possible — there's a place to put the enforcement.
-- The **multi-model orchestrator** ([case study 03](./03-code-review-orchestrator.md)) is an example of bounded coordination that can plug into the same identity plane: the orchestrator's adversarial prompt framings and routing decisions become events the identity plane can reason about.
+- The **multi-model orchestrator** ([case study 02](./02-code-review-orchestrator.md)) is an example of bounded coordination that can plug into the same identity plane: the orchestrator's adversarial prompt framings and routing decisions become events the identity plane can reason about.
 - The **observability layer** is where the audit chain lives. Every credential issuance and every policy decision becomes a structured event, correlated with the request and tool-execution telemetry the gateway already emits.
 - The **provenance and deployment-safety layer** (in development) is the downstream consumer: when an agent action affects a release artifact or a production change, the credential issuance and the action's audit record become inputs to the provenance chain that gates the deployment.
 

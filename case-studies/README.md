@@ -2,7 +2,7 @@
 
 Each case study follows a consistent structure:
 
-1. **Status** — Shipped / Prototype / Design.
+1. **Status** — Shipped / Prototype / Architecture study.
 2. **Context** — the operational problem and constraints.
 3. **Architecture** — the system as built or proposed.
 4. **Tradeoffs** — what was given up and why.
@@ -12,5 +12,5 @@ Each case study follows a consistent structure:
 ## Index
 
 - [`01-ai-orchestration-gateway.md`](./01-ai-orchestration-gateway.md) — Production AI Orchestration Gateway *(Shipped)*
-- [`03-code-review-orchestrator.md`](./03-code-review-orchestrator.md) — Multi-Model Code Review Orchestrator *(Design)*
-- [`04-agent-identity-mcp-plane.md`](./04-agent-identity-mcp-plane.md) — Agent Identity and MCP Credential Plane *(Design note)*
+- [`02-code-review-orchestrator.md`](./02-code-review-orchestrator.md) — Multi-Model Code Review Orchestrator *(Architecture study)*
+- [`03-agent-identity-mcp-plane.md`](./03-agent-identity-mcp-plane.md) — Agent Identity and MCP Credential Plane *(Architecture study)*
