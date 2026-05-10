@@ -22,7 +22,7 @@ Each declares its status at the top — *Shipped* (running in production), *Prot
 
 - **[Agent Identity and MCP Credential Plane](./case-studies/03-agent-identity-mcp-plane.md)** — *Prototype.* Why agent identity is harder than service identity, the operational threat model, and the gateway-mediated scoped-execution shape that closes the failure modes. Demonstrates Ed25519-signed scoped credentials, a verifier structurally separated from tool code, and a runnable demonstration of the headline rejection — a credential issued for one action cannot be used to call another. **Companion code:** [`agent-identity-mcp`](https://github.com/ryanwilliams90/agent-identity-mcp).
 
-- **[Cryptographic Provenance for AI-Assisted Code](./case-studies/04-provenance-attestation.md)** — *Architecture study.* Why AI-assisted delivery makes "a human reviewed the PR" insufficient as a provenance model, and what an artifact-centered signed chain looks like instead. Covers the threat model, the design pattern to reject (process records as source of truth), the preferred SLSA-compatible chain from specification through commit, build attestation, signed artifact, deployment record, and admission verification, plus rollback semantics keyed on signed change-class metadata.
+- **[Cryptographic Provenance for AI-Assisted Code](./case-studies/04-provenance-attestation.md)** — *Architecture study.* Why AI-assisted delivery makes "a human reviewed the PR" insufficient as a provenance model, and what an artifact-centered signed chain looks like instead. Covers the threat model, the design pattern to reject, the preferred SLSA-compatible chain, deployment / admission verification, and rollback semantics keyed on signed change-class metadata.
 
 ## Reading order
 
