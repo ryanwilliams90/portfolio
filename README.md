@@ -22,7 +22,12 @@ Each declares its status at the top — *Shipped* (running in production), *Prot
 
 - **[Agent Identity and MCP Credential Plane](./case-studies/03-agent-identity-mcp-plane.md)** — *Architecture study.* Why agent identity is harder than service identity, what the operational threat model actually is, and the gateway-mediated scoped-execution shape that closes those failure modes. Argues that scoped execution is the operating model for agent platforms, not a security feature retrofitted later.
 
-A further case study on cryptographic provenance for AI-assisted code is in development.
+## Reading order
+
+- **5 minutes:** the [perspective piece](./writing/calling-the-model-is-the-easy-part.md).
+- **30 minutes:** the perspective piece, then the [orchestration gateway case study](./case-studies/01-ai-orchestration-gateway.md).
+- **A full read:** all three case studies, in order.
+- **Want code:** [`orchestration-gateway-pattern`](https://github.com/ryanwilliams90/orchestration-gateway-pattern) — clean-room reference implementation of the gateway pattern.
 
 ---
 
